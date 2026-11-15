@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>出勤紀錄日曆</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="出勤紀錄">
+<meta name="theme-color" content="#3f7d5c">
+<style>
+:root{--g:#3f7d5c;--g2:#e7f2ec;--bd:#e3e6e4;--tx:#1f2a24;--mu:#6b7770;--red:#c0392b;--yel:#fff6dc;--bg:#f6f8f7}
+*{box-sizing:border-box}
+body{margin:0;font-family:"PingFang TC","Microsoft JhengHei","Noto Sans TC",system-ui,sans-serif;background:var(--bg);color:var(--tx);font-size:15px}
+.wrap{max-width:560px;margin:0 auto;padding:12px 12px 90px}
+header{display:flex;align-items:center;justify-content:space-between;margin:4px 2px 10px}
+h1{font-size:21px;margin:0;color:var(--g)}
+.who{font-size:13px;color:var(--mu)}
+button{font:inherit;cursor:pointer;border:1px solid var(--bd);background:#fff;color:var(--tx);border-radius:10px;padding:8px 12px}
+button.pri{background:var(--g);color:#fff;border-color:var(--g)}
+button.dan{color:var(--red);border-color:#f0c9c4}
+.banner{border-radius:12px;padding:10px 12px;margin:0 0 10px;font-size:14px;line-height:1.5}
+.banner.red{background:#fdecea;color:#8e2418;border:1px solid #f3c2bb}
+.banner.yel{background:var(--yel);color:#7a5a00;border:1px solid #f1dfa6}
+.banner button{margin-top:6px;padding:5px 10px;font-size:13px}
+.card{background:#fff;border:1px solid var(--bd);border-radius:14px;padding:12px;margin-bottom:10px}
+.mnav{display:flex;align-items:center;justify-content:space-between}
+.mnav b{font-size:19px}
+.mnav button{width:40px;padding:6px 0}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:10px}
+.wd{text-align:center;font-size:12px;color:var(--mu);padding:2px 0}
+.wd.we{color:var(--red)}
+.day{min-height:66px;border:1px solid var(--bd);border-radius:9px;padding:3px;background:#fff;text-align:left;display:flex;flex-direction:column;gap:2px;overflow:hidden}
+.day.empty{border:none;background:transparent}
+.day.today{border:2px solid var(--g)}
+.day .n{font-size:12px;color:var(--mu)}
+.day.we .n{color:var(--red)}
+.chip{font-size:11px;border-radius:5px;padding:1px 3px;line-height:1.3;white-space:nowrap}
+.s-full{background:#d8efe1;color:#1d5c3a}.s-half{background:#e3ecfb;color:#24508f}.s-hours{background:#efe5fa;color:#5b2d8f}
+.s-personal{background:#fde8d4;color:#8a4a0d}.s-sick{background:#fbdcdc;color:#8e2418}
+.mini{font-size:10.5px;color:#444;line-height:1.25}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stat{background:var(--g2);border-radius:10px;padding:8px 10px}
+.stat .l{font-size:12px;color:var(--mu)}
+.stat .v{font-size:17px;font-weight:600;margin-top:2px}
+.acts{display:flex;gap:8px;flex-wrap:wrap}
+.acts button{flex:1;min-width:140px}
+.mask{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;z-index:10}
+.sheet{position:fixed;left:0;right:0;bottom:0;max-height:92vh;overflow:auto;background:#fff;border-radius:18px 18px 0 0;padding:16px 16px 24px;z-index:11;display:none;max-width:560px;margin:0 auto}
+.show{display:block}
+.sheet h2{font-size:18px;margin:0 0 12px}
+.lbl{font-size:13px;color:var(--mu);margin:12px 0 6px}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{flex:1;min-width:60px;padding:10px 4px}
+.seg button.on{background:var(--g);color:#fff;border-color:var(--g)}
+.tog{width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;padding:11px 12px}
+.tog.on{background:var(--g2);border-color:var(--g)}
+.tog .st{font-size:13px;color:var(--mu)}
+.sub{display:flex;gap:8px;margin-top:6px;align-items:center}
+.sub label{flex:1;font-size:12px;color:var(--mu)}
+input,textarea{font:inherit;width:100%;padding:9px 10px;border:1px solid var(--bd);border-radius:9px;margin-top:3px;background:#fff;color:var(--tx)}
+.row2{display:flex;gap:8px;margin-top:16px}
+.row2 button{flex:1;padding:12px}
+.note{font-size:12.5px;color:var(--mu);line-height:1.6}
+#pv{width:100%;border:1px solid var(--bd);border-radius:6px;margin-top:8px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#222;color:#fff;padding:9px 16px;border-radius:20px;font-size:14px;z-index:30;display:none}
+.hr{height:1px;background:var(--bd);margin:16px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div><h1>出勤紀錄日曆</h1><div class="who" id="who"></div></div>
+    <button id="btnSet">⚙ 設定</button>
+  </header>
+  <div id="banners"></div>
+  <div class="card">
+    <div class="mnav"><button id="prev">‹</button><b id="mtitle"></b><button id="next">›</button></div>
+    <div class="grid" id="grid"></div>
+  </div>
+  <div class="card"><div class="stats" id="stats"></div></div>
+  <div class="card acts">
+    <button class="pri" id="btnPdf">📄 本月 PDF</button>
+    <button id="btnBackup">💾 備份紀錄</button>
+  </div>
+  <p class="note">點日期就能記錄。紀錄只存在這支手機的這個瀏覽器裡，請固定用同一個方式打開這個網頁，並定期按「備份紀錄」。</p>
+</div>
+
+<div class="mask" id="mask"></div>
+
+<!-- 單日編輯 -->
+<div class="sheet" id="shDay">
+  <h2 id="dTitle"></h2>
+  <div class="lbl">出勤狀態</div>
+  <div class="seg" id="segSt"></div>
+  <div class="sub" id="hoursBox" style="display:none"><label>出勤時數（小時）<input id="inHours" type="number" inputmode="decimal" step="0.5" min="0"></label></div>
+
+  <div class="lbl">其他</div>
+  <button class="tog" id="tgOt"><span>⏱ 加班</span><span class="st"></span></button>
+  <div class="sub" id="otBox" style="display:none"><label>加班時數（小時）<input id="inOt" type="number" inputmode="decimal" step="0.5" min="0"></label></div>
+
+  <button class="tog" id="tgMeal" style="margin-top:8px"><span>🍱 餐費</span><span class="st"></span></button>
+  <div class="sub" id="mealBox" style="display:none">
+    <label>數量<input id="inMealQ" type="number" inputmode="numeric" step="1" min="0"></label>
+    <label>單價（元）<input id="inMealP" type="number" inputmode="numeric" step="1" min="0"></label>
+  </div>
+
+  <button class="tog" id="tgDrive" style="margin-top:8px"><span>🚗 開車津貼</span><span class="st"></span></button>
+  <div class="sub" id="driveBox" style="display:none">
+    <label>數量<input id="inDriveQ" type="number" inputmode="numeric" step="1" min="0"></label>
+    <label>單價（元）<input id="inDriveP" type="number" inputmode="numeric" step="1" min="0"></label>
+  </div>
+
+  <div class="lbl">備註（選填）</div>
+  <input id="inNote" maxlength="40" placeholder="例如：工地名稱">
+  <div class="row2"><button class="dan" id="dClear">清除這天</button><button id="dCancel">取消</button><button class="pri" id="dSave">儲存</button></div>
+</div>
+
+<!-- 設定 -->
+<div class="sheet" id="shSet">
+  <h2 id="setTitle">設定</h2>
+  <label class="lbl" style="display:block">姓名<input id="sName" placeholder="例如：王小明"></label>
+  <div class="sub">
+    <label>餐費預設單價（元）<input id="sMeal" type="number" inputmode="numeric" placeholder="例如：100"></label>
+    <label>開車津貼預設單價（元）<input id="sDrive" type="number" inputmode="numeric" placeholder="例如：200"></label>
+  </div>
+  <div class="row2"><button class="pri" id="sSave">儲存設定</button></div>
+  <div class="hr"></div>
+  <h2>備份與還原</h2>
+  <p class="note">換手機、清除瀏覽器資料前，請先備份。還原會用備份內容取代目前手機上的全部紀錄。</p>
+  <div class="acts">
+    <button id="sBackup">💾 下載備份檔</button>
+    <button id="sCopy">📋 複製備份文字</button>
+  </div>
+  <div class="lbl">從備份還原</div>
+  <div class="acts">
+    <label style="flex:1"><input type="file" id="sFile" accept=".json,.txt,application/json,text/plain" style="display:none"><span class="tog" style="justify-content:center;border:1px solid var(--bd);border-radius:10px;cursor:pointer">📂 選擇備份檔</span></label>
+  </div>
+  <textarea id="sPaste" rows="3" placeholder="或把備份文字貼在這裡" style="margin-top:8px"></textarea>
+  <div class="row2"><button id="sRestoreTxt">用貼上的文字還原</button></div>
+  <div class="hr"></div>
+  <h2>建議：加到主畫面</h2>
+  <p class="note">iPhone：用 Safari 打開 → 下方「分享」→「加入主畫面」。<br>Android：用 Chrome 打開 → 右上角「⋮」→「加到主畫面」。<br>之後都從主畫面的圖示打開，就不會開錯地方。</p>
+  <div class="row2"><button id="sClose">關閉</button></div>
+</div>
+
+<!-- PDF 預覽 -->
+<div class="sheet" id="shPdf">
+  <h2 id="pdfTitle">本月 PDF</h2>
+  <div class="acts"><button class="pri" id="pdfSave">下載 PDF</button><button id="pdfClose">關閉</button></div>
+  <img id="pv" alt="PDF 預覽">
+</div>
+
+<!-- 確認框 -->
+<div class="sheet" id="shAsk" style="z-index:21">
+  <h2 id="askT"></h2><p class="note" id="askB"></p>
+  <div class="row2"><button id="askNo">取消</button><button class="pri" id="askYes">確定</button></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+const KEY='attn_calendar_v2';
+const ST={full:'一天',half:'半天',hours:'時數',personal:'事假',sick:'病假'};
+const WD=['日','一','二','三','四','五','六'];
+const $=id=>document.getElementById(id);
+let storageOK=true;
+let data={profile:{name:'',meal:'',drive:''},days:{},lastBackup:0};
+
+function load(){
+  try{const s=localStorage.getItem(KEY);if(s){const o=JSON.parse(s);data=Object.assign(data,o);data.profile=Object.assign({name:'',meal:'',drive:''},o.profile||{});data.days=o.days||{};}
+    localStorage.setItem(KEY+'_t','1');localStorage.removeItem(KEY+'_t');
+  }catch(e){storageOK=false}
+}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(data));storageOK=true}catch(e){storageOK=false;toast('⚠ 這個瀏覽器無法保存紀錄')}}
+try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
+
+const pad=n=>String(n).padStart(2,'0');
+const k=(y,m,d)=>`${y}-${pad(m)}-${pad(d)}`;
+const num=v=>{const n=parseFloat(v);return isFinite(n)?n:0};
+const fmt=n=>(Math.round(n*100)/100).toLocaleString('zh-TW');
+let now=new Date(),Y=now.getFullYear(),M=now.getMonth()+1;
+
+function toast(t){const e=$('toast');e.textContent=t;e.style.display='block';clearTimeout(e._t);e._t=setTimeout(()=>e.style.display='none',2200)}
+function open(id){$('mask').classList.add('show');$(id).classList.add('show')}
+function close(id){$(id).classList.remove('show');if(!document.querySelector('.sheet.show'))$('mask').classList.remove('show')}
+function ask(t,b,yes){$('askT').textContent=t;$('askB').textContent=b;open('shAsk');$('askYes').onclick=()=>{close('shAsk');yes()};$('askNo').onclick=()=>close('shAsk')}
+
+function banners(){
+  const b=[];const ua=navigator.userAgent||'';
+  if(/\bLine\//i.test(ua)) b.push(`<div class="banner red"><b>⚠ 你正在 LINE 裡面開這個網頁</b><br>在 LINE 裡記錄很容易不見。請點右上角「⋮」或分享圖示，選「用預設瀏覽器開啟」，改用 Safari／Chrome 記錄。</div>`);
+  if(!storageOK) b.push(`<div class="banner red"><b>⚠ 這個瀏覽器無法保存紀錄</b><br>可能是無痕模式或瀏覽器設定擋住了。請改用一般模式的 Safari／Chrome 打開。</div>`);
+  const cnt=Object.keys(data.days).length;
+  if(storageOK&&cnt>=3&&(!data.lastBackup||Date.now()-data.lastBackup>30*864e5)) b.push(`<div class="banner yel">💾 ${data.lastBackup?'已超過 30 天沒有備份':'你還沒有備份過紀錄'}，建議現在備份一次，換手機或資料不見時才能救回來。<br><button id="bnBk">立即備份</button></div>`);
+  $('banners').innerHTML=b.join('');
+  const x=$('bnBk');if(x)x.onclick=backupFile;
+}
+
+function monthDays(y,m){return new Date(y,m,0).getDate()}
+function stats(y,m){
+  const s={full:0,half:0,hours:0,personal:0,sick:0,ot:0,mq:0,ma:0,dq:0,da:0};
+  for(let d=1;d<=monthDays(y,m);d++){const r=data.days[k(y,m,d)];if(!r)continue;
+    if(r.st==='full')s.full++;else if(r.st==='half')s.half++;else if(r.st==='hours')s.hours+=num(r.h);else if(r.st==='personal')s.personal++;else if(r.st==='sick')s.sick++;
+    if(r.ot)s.ot+=num(r.ot);
+    if(r.meal){s.mq+=num(r.meal.q);s.ma+=num(r.meal.q)*num(r.meal.p)}
+    if(r.drive){s.dq+=num(r.drive.q);s.da+=num(r.drive.q)*num(r.drive.p)}
+  }return s}
+function stLabel(r){if(!r||!r.st)return'';return r.st==='hours'?`${fmt(num(r.h))} 小時`:ST[r.st]}
+
+function render(){
+  $('who').textContent=data.profile.name?`${data.profile.name} 的紀錄`:'';
+  $('mtitle').textContent=`${Y} 年 ${M} 月`;
+  const g=$('grid');let h=WD.map((w,i)=>`<div class="wd ${i==0||i==6?'we':''}">${w}</div>`).join('');
+  const first=new Date(Y,M-1,1).getDay();for(let i=0;i<first;i++)h+='<div class="day empty"></div>';
+  const tk=k(now.getFullYear(),now.getMonth()+1,now.getDate());
+  for(let d=1;d<=monthDays(Y,M);d++){const key=k(Y,M,d),r=data.days[key],wd=(first+d-1)%7;
+    let inner=`<span class="n">${d}</span>`;
+    if(r){if(r.st)inner+=`<span class="chip s-${r.st}">${stLabel(r)}</span>`;
+      const m=[];if(r.ot)m.push(`加${fmt(num(r.ot))}h`);if(r.meal)m.push(`餐×${fmt(num(r.meal.q))}`);if(r.drive)m.push(`車×${fmt(num(r.drive.q))}`);
+      if(m.length)inner+=`<span class="mini">${m.join('<br>')}</span>`;}
+    h+=`<button class="day ${wd==0||wd==6?'we':''} ${key==tk?'today':''}" data-k="${key}">${inner}</button>`;}
+  g.innerHTML=h;
+  g.querySelectorAll('.day[data-k]').forEach(b=>b.onclick=()=>editDay(b.dataset.k));
+  const s=stats(Y,M);
+  $('stats').innerHTML=[
+    ['出勤 一天',`${s.full} 天`],['出勤 半天',`${s.half} 次`],['出勤 時數',`${fmt(s.hours)} 小時`],['事假／病假',`${s.personal} 天／${s.sick} 天`],
+    ['加班',`${fmt(s.ot)} 小時`],['餐費',`${fmt(s.mq)} 份・$${fmt(s.ma)}`],['開車津貼',`${fmt(s.dq)} 次・$${fmt(s.da)}`],['本月津貼合計',`$${fmt(s.ma+s.da)}`]
+  ].map(x=>`<div class="stat"><div class="l">${x[0]}</div><div class="v">${x[1]}</div></div>`).join('');
+  banners();
+}
+
+/* ---- 單日編輯 ---- */
+let cur=null,draft=null;
+function editDay(key){
+  cur=key;const r=data.days[key];
+  draft=r?JSON.parse(JSON.stringify(r)):{};
+  const [y,m,d]=key.split('-').map(Number);
+  $('dTitle').textContent=`${m}/${d}（${WD[new Date(y,m-1,d).getDay()]}）`;
+  $('segSt').innerHTML=Object.keys(ST).map(s=>`<button data-s="${s}">${ST[s]}</button>`).join('');
+  $('segSt').querySelectorAll('button').forEach(b=>b.onclick=()=>{draft.st=draft.st===b.dataset.s?undefined:b.dataset.s;if(draft.st==='hours'&&!draft.h)draft.h='';paintDay();if(draft.st==='hours')$('inHours').focus()});
+  $('inHours').value=draft.h||'';$('inOt').value=draft.ot||'';
+  $('inMealQ').value=draft.meal?draft.meal.q:'';$('inMealP').value=draft.meal?draft.meal.p:'';
+  $('inDriveQ').value=draft.drive?draft.drive.q:'';$('inDriveP').value=draft.drive?draft.drive.p:'';
+  $('inNote').value=draft.note||'';
+  draft._ot=!!draft.ot;draft._meal=!!draft.meal;draft._drive=!!draft.drive;
+  paintDay();open('shDay');
+}
+function paintDay(){
+  $('segSt').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.s===draft.st));
+  $('hoursBox').style.display=draft.st==='hours'?'flex':'none';
+  [['Ot','_ot'],['Meal','_meal'],['Drive','_drive']].forEach(([n,f])=>{
+    $('tg'+n).classList.toggle('on',draft[f]);$('tg'+n).querySelector('.st').textContent=draft[f]?'有 ✓':'點一下填寫';
+    $(n.toLowerCase()+'Box').style.display=draft[f]?'flex':'none';});
+}
+$('tgOt').onclick=()=>{draft._ot=!draft._ot;paintDay();if(draft._ot)$('inOt').focus()};
+$('tgMeal').onclick=()=>{draft._meal=!draft._meal;if(draft._meal){if(!$('inMealQ').value)$('inMealQ').value=1;if(!$('inMealP').value)$('inMealP').value=data.profile.meal||''}paintDay()};
+$('tgDrive').onclick=()=>{draft._drive=!draft._drive;if(draft._drive){if(!$('inDriveQ').value)$('inDriveQ').value=1;if(!$('inDriveP').value)$('inDriveP').value=data.profile.drive||''}paintDay()};
+$('dCancel').onclick=()=>close('shDay');
+$('dClear').onclick=()=>{delete data.days[cur];save();close('shDay');render();toast('已清除')};
+$('dSave').onclick=()=>{
+  const r={};
+  if(draft.st){r.st=draft.st;if(r.st==='hours'){const h=num($('inHours').value);if(!h){toast('請填出勤時數');return}r.h=h}}
+  if(draft._ot){const o=num($('inOt').value);if(!o){toast('請填加班時數');return}r.ot=o}
+  if(draft._meal){const q=num($('inMealQ').value);if(!q){toast('請填餐費數量');return}r.meal={q,p:num($('inMealP').value)}}
+  if(draft._drive){const q=num($('inDriveQ').value);if(!q){toast('請填開車津貼數量');return}r.drive={q,p:num($('inDriveP').value)}}
+  const note=$('inNote').value.trim();if(note)r.note=note;
+  if(Object.keys(r).length)data.days[cur]=r;else delete data.days[cur];
+  save();close('shDay');render();toast(storageOK?'已儲存':'⚠ 無法保存');
+};
+
+/* ---- 設定 ---- */
+function openSet(first){
+  $('setTitle').textContent=first?'第一次使用：請填寫基本資料':'設定';
+  $('sName').value=data.profile.name;$('sMeal').value=data.profile.meal;$('sDrive').value=data.profile.drive;open('shSet');
+}
+$('btnSet').onclick=()=>openSet(false);
+$('sSave').onclick=()=>{data.profile={name:$('sName').value.trim(),meal:$('sMeal').value,drive:$('sDrive').value};save();render();toast('設定已儲存')};
+$('sClose').onclick=()=>close('shSet');
+$('mask').onclick=()=>document.querySelectorAll('.sheet.show').forEach(s=>s.id!=='shAsk'&&close(s.id));
+
+/* ---- 備份 ---- */
+const today=()=>{const t=new Date();return `${t.getFullYear()}${pad(t.getMonth()+1)}${pad(t.getDate())}`};
+function backupText(){return JSON.stringify({app:'出勤紀錄日曆',v:2,at:new Date().toISOString(),profile:data.profile,days:data.days})}
+async function saveFile(filename,payload,type){
+  try{
+    const blob=payload instanceof Blob?payload:new Blob([payload],{type});
+    const mobile=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent||'');
+    if(mobile&&window.File&&navigator.canShare){
+      const file=new File([blob],filename,{type});
+      if(navigator.canShare({files:[file]})){
+        try{await navigator.share({files:[file],title:filename});return true}
+        catch(e){if(e&&e.name==='AbortError'){toast('已取消');return false}}
+      }
+    }
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;document.body.appendChild(a);a.click();
+    setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},5000);return true;
+  }catch(e){toast('下載失敗，請改用「複製」');return false}
+}
+async function backupFile(){
+  const ok=await saveFile(`出勤備份_${data.profile.name||'未命名'}_${today()}.json`,backupText(),'application/json');
+  if(ok){data.lastBackup=Date.now();save();render();toast('備份完成，建議把檔案傳到自己的 LINE 或雲端保存')}
+}
+$('btnBackup').onclick=backupFile;$('sBackup').onclick=backupFile;
+$('sCopy').onclick=async()=>{try{await navigator.clipboard.writeText(backupText());data.lastBackup=Date.now();save();render();toast('已複製，請貼到 LINE 傳給自己保存')}
+  catch(e){$('sPaste').value=backupText();$('sPaste').select();toast('請長按上方文字框，全選後複製')}};
+function restore(txt){
+  let o;try{o=JSON.parse(txt)}catch(e){toast('備份內容格式不對');return}
+  if(!o||!o.days){toast('這不是出勤備份');return}
+  const n=Object.keys(o.days).length;
+  ask('確定要還原嗎？',`備份裡有 ${n} 天的紀錄（${o.profile&&o.profile.name||'未命名'}）。目前手機上的紀錄會被取代。`,()=>{
+    data.days=o.days;if(o.profile)data.profile=Object.assign(data.profile,o.profile);data.lastBackup=Date.now();save();render();close('shSet');toast('還原完成');});
+}
+$('sFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>restore(r.result);r.readAsText(f);e.target.value=''};
+$('sRestoreTxt').onclick=()=>{const t=$('sPaste').value.trim();if(!t){toast('請先貼上備份文字');return}restore(t)};
+
+/* ---- PDF ---- */
+const PW=1240,PH=1754;
+function drawPage(y,m){
+  const c=document.createElement('canvas');c.width=PW;c.height=PH;const x=c.getContext('2d');
+  const F='"PingFang TC","Microsoft JhengHei","Noto Sans TC",sans-serif';
+  x.fillStyle='#fff';x.fillRect(0,0,PW,PH);x.fillStyle='#000';x.textBaseline='middle';
+  x.font=`bold 40px ${F}`;x.textAlign='center';x.fillText(`${y} 年 ${m} 月 出勤紀錄表`,PW/2,90);
+  x.font=`24px ${F}`;x.textAlign='left';x.fillText(`姓名：${data.profile.name||''}`,70,155);
+  x.textAlign='right';x.fillText(`列印日期：${new Date().toLocaleDateString('zh-TW')}`,PW-70,155);
+  // columns
+  const cols=[['日期',100],['星期',60],['出勤狀態',150],['加班時數',110],['數量',90],['單價',100],['數量',90],['單價',100],['備註',300]];
+  const X=[70];cols.forEach(c=>X.push(X[X.length-1]+c[1]));
+  const top=190,hh=36,rh=35,nd=monthDays(y,m);
+  const line=(a,b,c2,d)=>{x.beginPath();x.moveTo(a,b);x.lineTo(c2,d);x.stroke()};
+  const cell=(t,i,yy,h,bold)=>{x.font=`${bold?'bold ':''}22px ${F}`;x.textAlign='center';x.fillText(t,(X[i]+X[i+1])/2,yy+h/2,cols[i][1]-8)};
+  // header bg
+  x.fillStyle='#eef3f0';x.fillRect(X[0],top,X[9]-X[0],hh*2);x.fillStyle='#000';
+  [0,1,2,3,8].forEach(i=>{x.font=`bold 22px ${F}`;x.textAlign='center';x.fillText(cols[i][0],(X[i]+X[i+1])/2,top+hh)});
+  x.font=`bold 22px ${F}`;x.fillText('餐費',(X[4]+X[6])/2,top+hh/2);x.fillText('開車津貼',(X[6]+X[8])/2,top+hh/2);
+  [4,5,6,7].forEach(i=>cell(cols[i][0],i,top+hh,hh,true));
+  const s=stats(y,m);let yy=top+hh*2;
+  for(let d=1;d<=nd;d++){const wd=new Date(y,m-1,d).getDay(),r=data.days[k(y,m,d)]||{};
+    if(wd==0||wd==6){x.fillStyle='#f3f3f3';x.fillRect(X[0],yy,X[9]-X[0],rh);}
+    x.fillStyle=(wd==0||wd==6)?'#b03a2e':'#000';cell(`${m}/${d}`,0,yy,rh);cell(WD[wd],1,yy,rh);x.fillStyle='#000';
+    cell(stLabel(r),2,yy,rh);cell(r.ot?fmt(num(r.ot)):'',3,yy,rh);
+    cell(r.meal?fmt(num(r.meal.q)):'',4,yy,rh);cell(r.meal?fmt(num(r.meal.p)):'',5,yy,rh);
+    cell(r.drive?fmt(num(r.drive.q)):'',6,yy,rh);cell(r.drive?fmt(num(r.drive.p)):'',7,yy,rh);
+    x.font=`20px ${F}`;x.textAlign='left';x.fillText(r.note||'',X[8]+8,yy+rh/2,cols[8][1]-14);
+    yy+=rh;}
+  // totals row
+  x.fillStyle='#eef3f0';x.fillRect(X[0],yy,X[9]-X[0],rh);x.fillStyle='#000';
+  x.font=`bold 22px ${F}`;x.textAlign='center';x.fillText('合計',(X[0]+X[3])/2,yy+rh/2);
+  cell(fmt(s.ot),3,yy,rh,true);cell(fmt(s.mq),4,yy,rh,true);cell(fmt(s.dq),6,yy,rh,true);
+  const bot=yy+rh;
+  // grid lines
+  x.strokeStyle='#555';x.lineWidth=1.5;
+  line(X[0],top,X[9],top);line(X[4],top+hh,X[8],top+hh);
+  for(let i=0;i<=nd+1;i++)line(X[0],top+hh*2+i*rh,X[9],top+hh*2+i*rh);
+  X.forEach((xx,i)=>{const half=(i==5||i==7);line(xx,half?top+hh:top,xx,i>0&&i<3?bot-rh:bot)});
+  line(X[3],bot-rh,X[3],bot);
+  // summary
+  let sy=bot+50;x.font=`24px ${F}`;x.textAlign='left';
+  x.fillText(`出勤：一天 ${s.full} 天、半天 ${s.half} 次、時數 ${fmt(s.hours)} 小時；事假 ${s.personal} 天、病假 ${s.sick} 天`,70,sy);sy+=42;
+  x.fillText(`加班合計：${fmt(s.ot)} 小時`,70,sy);sy+=42;
+  x.fillText(`餐費：${fmt(s.mq)} 份，金額 $${fmt(s.ma)}　　開車津貼：${fmt(s.dq)} 次，金額 $${fmt(s.da)}　　合計 $${fmt(s.ma+s.da)}`,70,sy);
+  sy+=80;x.fillText('員工簽名：______________________',70,sy);x.textAlign='right';x.fillText('主管簽名：______________________',PW-70,sy);
+  return c;
+}
+function makePdf(jpegs){
+  const enc=new TextEncoder(),parts=[],offs=[];let pos=0;
+  const put=p=>{const b=typeof p==='string'?enc.encode(p):p;parts.push(b);pos+=b.length};
+  put('%PDF-1.4\n');put(new Uint8Array([37,226,227,207,211,10]));
+  const n=jpegs.length,total=2+n*3;
+  const obj=(i,body)=>{offs[i]=pos;put(`${i} 0 obj\n`);body();put('\nendobj\n')};
+  obj(1,()=>put('<< /Type /Catalog /Pages 2 0 R >>'));
+  obj(2,()=>put(`<< /Type /Pages /Count ${n} /Kids [${jpegs.map((_,i)=>`${3+i*3} 0 R`).join(' ')}] >>`));
+  jpegs.forEach((j,i)=>{const p=3+i*3;
+    obj(p,()=>put(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /XObject << /Im0 ${p+2} 0 R >> >> /Contents ${p+1} 0 R >>`));
+    const cs='q 595.28 0 0 841.89 0 0 cm /Im0 Do Q';
+    obj(p+1,()=>put(`<< /Length ${cs.length} >>\nstream\n${cs}\nendstream`));
+    obj(p+2,()=>{put(`<< /Type /XObject /Subtype /Image /Width ${j.w} /Height ${j.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${j.b.length} >>\nstream\n`);put(j.b);put('\nendstream')});
+  });
+  const xref=pos;let t=`xref\n0 ${total+1}\n0000000000 65535 f \n`;
+  for(let i=1;i<=total;i++)t+=String(offs[i]).padStart(10,'0')+' 00000 n \n';
+  put(t+`trailer\n<< /Size ${total+1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
+  const out=new Uint8Array(pos);let o=0;parts.forEach(b=>{out.set(b,o);o+=b.length});return out;
+}
+let pdfCanvas=null;
+$('btnPdf').onclick=()=>{pdfCanvas=drawPage(Y,M);$('pv').src=pdfCanvas.toDataURL('image/png');$('pdfTitle').textContent=`${Y} 年 ${M} 月 PDF 預覽`;open('shPdf')};
+$('pdfClose').onclick=()=>close('shPdf');
+$('pdfSave').onclick=async()=>{
+  const u=pdfCanvas.toDataURL('image/jpeg',0.92),bin=atob(u.split(',')[1]),b=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++)b[i]=bin.charCodeAt(i);
+  const pdf=makePdf([{b,w:PW,h:PH}]);
+  const ok=await saveFile(`出勤紀錄_${data.profile.name||'未命名'}_${Y}年${M}月.pdf`,new Blob([pdf],{type:'application/pdf'}),'application/pdf');
+  if(ok)toast('PDF 已下載');
+};
+
+$('prev').onclick=()=>{M--;if(M<1){M=12;Y--}render()};
+$('next').onclick=()=>{M++;if(M>12){M=1;Y++}render()};
+
+load();render();
+if(!data.profile.name)openSet(true);
+})();
+</script>
+</body>
+</html>
